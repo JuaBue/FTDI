@@ -1,4 +1,6 @@
 #include <stdio.h>
+#include <conio.h>
+#include <time.h>
 
 #include <stdarg.h>
 #include <windows.h>
@@ -11,9 +13,53 @@
 
 #include "ftd2xx.h"
 
+static FILE * s_fileHandler = NULL;
+
+void fileOpen()
+{
+    char fileName[FILENAME_MAX] = {0};
+    time_t t = time(NULL);
+    struct tm tm = *localtime(&t);
+    FILE * fileHandler = NULL;
+
+    snprintf(fileName, sizeof(fileName),"%d%02d%02d%02d%02d%02d_raw.txt", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+    s_fileHandler = fopen(fileName, "w+");
+    if (NULL == s_fileHandler)
+    {
+        printf("[ERROR] Opening file %s", fileName);
+    }
+    printf("Open file %s\n",fileName);
+}
+
+void fileClose()
+{
+    if (NULL != s_fileHandler)
+    {
+        fclose(s_fileHandler);
+        s_fileHandler = NULL;
+        printf("File closed");
+    }
+}
+
+void fileAppendData(unsigned char * dataRead)
+{
+    int ret = 0;
+    int bytesToWrite = 0;
+    unsigned char writeBuffer[4] = {0};
+    
+    if (( NULL != s_fileHandler) && (NULL != dataRead))
+    {
+        bytesToWrite = snprintf(writeBuffer, sizeof(writeBuffer), "%02X,", *dataRead);
+        ret = fwrite(writeBuffer, 1, bytesToWrite, s_fileHandler);
+        if (ret != bytesToWrite)
+        {
+            printf("[ERROR] %d of %u written", ret, bytesToWrite);
+        }
+    }
+}
+
 int main()
 {
-    int i,n;
     unsigned char read_buf = 0;
     DWORD numDevs;
     FT_STATUS ftStatus;
@@ -45,7 +91,10 @@ int main()
         printf("FT_SetBaudRate Failed\n");
     }
 
-    while(1)
+    //Open the file
+    fileOpen();
+    printf("Press any key to stop reading\n");  
+    while(!kbhit())
     {
         res = FT_Read(handle, &read_buf, 1, &rBytes);
         if (res != FT_OK)
@@ -56,10 +105,12 @@ int main()
         }
         else
         {
-            printf("0x%02X\n", read_buf);       
+            printf("0x%02X\n", read_buf); 
+            fileAppendData(&read_buf);      
         }
     }    
-
+    printf("Read stopped\n");  
+    fileClose();
     FT_Close(handle);
     return 0;
 }
