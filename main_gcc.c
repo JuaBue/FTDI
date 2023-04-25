@@ -91,6 +91,14 @@ int main()
         printf("FT_SetBaudRate Failed\n");
     }
 
+    ftStatus = FT_SetTimeouts(handle,200,0);
+    if (ftStatus == FT_OK) {
+        printf("FT_SetTimeouts OK\n");
+    }
+    else {
+        printf("FT_SetTimeouts Failed\n");
+    }
+
     //Open the file
     fileOpen();
     printf("Press any key to stop reading\n");  
@@ -106,7 +114,8 @@ int main()
         else
         {
             printf("0x%02X\n", read_buf); 
-            fileAppendData(&read_buf);      
+            fileAppendData(&read_buf);
+            memset(&read_buf, 0, sizeof(unsigned char));
         }
     }    
     printf("Read stopped\n");  
