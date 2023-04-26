@@ -15,6 +15,15 @@
 
 static FILE * s_fileHandler = NULL;
 
+unsigned char delimeters[3][2] = { "00" , "55" , "E8" };
+
+typedef enum {
+    IDLE,
+    BREAK,
+    HEADER,
+    PAYLOAD,
+} FrameStatus;
+
 void fileOpen()
 {
     char fileName[FILENAME_MAX] = {0};
@@ -56,6 +65,47 @@ void fileAppendData(unsigned char * dataRead)
             printf("[ERROR] %d of %u written", ret, bytesToWrite);
         }
     }
+}
+
+void printFrame (unsigned char * input)
+{
+    static FrameStatus Status = IDLE;
+    static unsigned char buffer[50] = {};
+    switch (Status)
+    {
+    case IDLE:
+        if ( strncmp(input, delimeters[0], (size_t)2) ){
+            Status = BREAK;
+            strncpy(buffer, input, 2);
+        }
+        break;
+    
+    case BREAK:
+        if ( strncmp(input, delimeters[0], (size_t)2) ){
+            Status = BREAK;
+            strncpy(buffer, input, 2);
+        }
+        else if ( !strncmp(input, delimeters[1], (size_t)2) ){
+            Status = IDLE;
+        }
+        else{
+            Status = HEADER;
+            strncpy(&buffer[2], input, 2);
+        }
+        break;
+    
+    case HEADER:
+        /* code */
+        break;
+    
+    case PAYLOAD:
+        /* code */
+        break;
+    
+    default:
+        break;
+    }
+
 }
 
 int main()
@@ -113,7 +163,8 @@ int main()
         }
         else
         {
-            printf("0x%02X\n", read_buf); 
+            //printf("0x%02X\n", read_buf);
+            printFrame(&read_buf);
             fileAppendData(&read_buf);
             memset(&read_buf, 0, sizeof(unsigned char));
         }
